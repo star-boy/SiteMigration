@@ -1,0 +1,294 @@
+$SourceName = Show-Input "Enter name of website you want to copy" 
+$DestinationName = Show-Input "Enter name of website where you want to paste" 
+
+if(![string]::IsNullOrEmpty($SourceName) -And ![string]::IsNullOrEmpty($DestinationName))
+{
+	copyData -Path 'master:/sitecore/templates/' -Name 'templates'
+	copyData -Path 'master:/sitecore/layout/Layouts/' -Name 'layouts'
+	copyData -Path 'master:/sitecore/media library/Images/' -Name 'media files'
+	copyData -Path 'master:/sitecore/layout/Models/' -Name 'models'
+	copyData -Path 'master:/sitecore/content/SKII/' -Name 'items'
+	copyData -Path 'master:/sitecore/layout/Placeholder Settings/' -Name 'placeholder settings'
+	copyData -Path 'master:/sitecore/layout/Renderings/' -Name 'renderings'
+	renameItems -Path 'master:/sitecore/templates/' -Name 'templates'
+	renameItems -Path 'master:/sitecore/content/SKII/' -Name 'items'
+	renameItems -Path 'master:/sitecore/layout/Placeholder Settings/' -Name 'placeholder settings'
+	changeItemTemplates
+	updateAllowedControls
+	changeImageDataSource
+	updatePresentaionDetails -Path 'master:/sitecore/content/SKII/' -Name 'items'
+	updatePresentaionDetails -Path 'master:/sitecore/content/SKII/' -Name 'templates'
+	wishToCreateVersions
+}
+else
+{
+	Write-Host 'Must enter website names!'
+}
+
+
+#---------------------------------------------------------
+	#Copy Data
+	function copyData([String] $Path, [String] $Name)
+	{
+		Process
+		{
+			$sourceDir = $Path + $SourceName
+			$targetDir = $Path + $DestinationName
+
+			Write-Host 'Copying '$Name' from '$sourceDir' to '$targetDir
+
+			#Remove all child items of target directory 
+			Get-ChildItem -Path $targetDir | remove-item -recurse
+			#Copy all items from source directory to target directory
+			Get-ChildItem -Path $sourceDir | Copy-Item -Destination $targetDir -Recurse -Container
+
+			Write-Host 'Task Completed'
+		}
+	}
+	
+	#----------------------------------------------
+    #Rename Items
+    function renameItems([String] $Path, [String] $Name)
+    {
+        $sourcePath = $Path + $DestinationName
+        cd $sourcePath
+        Write-Host 'Renaming '$Name
+        foreach($item in Get-ChildItem -Recurse .) 
+        { 
+            $originalName = $item.Name
+            $newName = $originalName -Replace "$SourceName", "$DestinationName"
+        
+            $item.Editing.BeginEdit()
+            $item.Name = $newName;
+            $item.Fields["__Display name"].Value = $newName;
+            $item.Editing.EndEdit()
+        }
+        Write-Host 'Task Completed'
+    }
+
+	#---------------------------------------------------------
+	#Change image Data source
+    function changeImageDataSource
+    {
+        Write-Host 'Changing Image Data Source'
+        $sourcePath = 'master:/sitecore/content/SKII/' + $DestinationName
+        cd $sourcePath
+                    
+        foreach($item in Get-ChildItem -Recurse .) 
+        { 
+            $itemFieldList = Get-ItemField -Item $item
+            foreach($itemField in $itemFieldList)
+            {
+                if($itemField -match "Image")
+                {
+                    $originalValue = $item.Fields[$itemField].Value
+                    if(![string]::IsNullOrEmpty($originalValue))
+                    {
+                        $originalValue = ($originalValue).Substring(16,38)
+                        $originalItem = Get-Item $originalValue
+                        $originalPath = $originalItem.Paths.FullPath
+                        $newPath = $originalPath -Replace $SourceName, $DestinationName
+                        $newItem = Get-Item -path $newPath
+                        $newItemId = $newItem.Id
+                        $newValue = "<image mediaid=""$newItemId"" />"
+                        $item.Editing.BeginEdit()
+                        $item[$itemField] = $newValue
+                        $item.Editing.EndEdit()
+                    }
+                }
+            }			
+        }
+        
+        Write-Host 'Task Completed'
+    }
+    
+    #---------------------------------------------------------
+	#Change Templates
+    function changeItemTemplates
+    {
+        $sourcePath = 'master:/sitecore/content/SKII/' + $DestinationName
+        cd $sourcePath
+        Write-Host 'Change Item Templates'
+            
+        foreach($item in Get-ChildItem -Recurse .) 
+        { 
+            $oldItemTemplate = Get-ItemTemplate -Item $item
+            $oldTemplateId = $oldItemTemplate.Id
+            $oldItemTemplate = Get-Item $oldTemplateId
+            
+            $oldItemPath = $oldItemTemplate.Paths.FullPath
+            $newPath = $oldItemPath -Replace $SourceName, $DestinationName
+            $newItem = Get-Item -path $newPath
+            Set-ItemTemplate -Item $item -TemplateItem $newItem
+        }
+        Write-Host 'Task Completed'
+
+    }
+    
+    #---------------------------------------------------------
+	#Create Item Versions
+	function wishToCreateVersions()
+	{
+	    $option = Show-Input "Want to add version of '$Name' ? (Yes/No)"
+	    if($option -eq 'yes' -Or $option -eq 'Yes' -Or $option -eq 'YES')
+	    {
+	        $targetLanguage = Show-Input "Enter target Language" 
+	        createItemVersions -Path 'master:/sitecore/content/SKII/' -Name 'items' -TargetLanguage $targetLanguage
+        	createItemVersions -Path 'master:/sitecore/media library/Images/' -Name 'media' -TargetLanguage $targetLanguage
+        	createItemVersions -Path 'master:/sitecore/templates/' -Name 'templates' -TargetLanguage $targetLanguage
+        	createItemVersions -Path 'master:/sitecore/layout/Placeholder Settings/' -Name 'placeholder settings' -TargetLanguage $targetLanguage
+        	createItemVersions -Path 'master:/sitecore/layout/Renderings/' -Name 'renderings' -TargetLanguage $targetLanguage
+	    }
+	}
+	
+	function createItemVersions([String] $Path, [String] $Name, [String] $TargetLanguage)
+	{
+	    Write-Host 'Creating versions of '$Name
+        $sourcePath = $Path + $DestinationName
+        cd $sourcePath
+        #Fetching old language
+        $oldLang
+        foreach($item in Get-ChildItem -Recurse .)
+        {
+            $oldLang = $item.Language
+            Break
+        }
+        #Creating Versions 
+        Get-ChildItem . -Recurse | Add-ItemLanguage -Language $oldLang -TargetLanguage $TargetLanguage -IfExist OverwriteLatest
+        
+        #Deleting old versions
+        if((!($oldLang -eq $TargetLanguage)) -AND (![string]::IsNullOrEmpty($oldLang)))
+        {
+            Get-ChildItem $sourcePath -Recurse | 
+            Remove-ItemLanguage -Language $oldLang
+        }
+        Write-Host 'Task Completed'
+	    
+	}
+
+    #----------------------------------------------
+    #Update Allowed Controls in placeholder settings
+    function updateAllowedControls
+    {
+        $sourcePath = 'master:/sitecore/layout/Placeholder Settings/' + $DestinationName
+        cd $sourcePath
+        Write-Host 'Updating allowed controls of placeholder settings'                   
+        foreach($item in Get-ChildItem -Recurse .) 
+        { 
+            $originalValue = $item.Fields["Allowed Controls"].Value
+            if(![string]::IsNullOrEmpty($originalValue))
+            {
+                foreach($itemId in $originalValue.split("|"))
+                {
+                    $originalItem = Get-Item $itemId
+                    $originalPath = $originalItem.Paths.FullPath
+                    $newPath = $originalPath -Replace $SourceName, $DestinationName
+                    $newItem = Get-Item -path $newPath
+                    $newItemId = $newItem.Id
+                    $newValue = $originalValue -Replace $itemId, $newItemId
+                    $item.Editing.BeginEdit()
+                    $item["Allowed Controls"] = $newValue
+                    $item.Editing.EndEdit()
+                }
+            }
+        }
+        Write-Host 'Task Completed'
+    }
+    #----------------------------------------------
+    #Update path
+    function updatePath([String] $Path, [String] $Name)
+    {
+        $sourcePath = $Path + $DestinationName
+        cd $sourcePath
+        Write-Host 'Updating path of '$Name                    
+        foreach($item in Get-ChildItem -Recurse .) 
+        { 
+            $itemFieldList = Get-ItemField -Item $item
+            foreach($itemField in $itemFieldList)
+            {
+                $originalValue = $item.Fields[$itemField].Value
+                if(![string]::IsNullOrEmpty($originalValue))
+                {
+                    $newValue = $originalValue -Replace $SourceName, $DestinationName
+                    $item.Editing.BeginEdit()
+                    $item[$itemField] = $newValue
+                    $item.Editing.EndEdit()
+                }
+                
+            }			
+        }
+        Write-Host 'Task Completed'
+    }
+    #----------------------------------------------
+    #Update Presenatation Details
+    function updatePresentaionDetails([String] $Path, [String] $Name)
+    {
+        Write-Host 'Updating Presentation Details of '$Name
+        $sourcePath = $Path + $DestinationName
+        cd $sourcePath
+                
+        foreach($item in Get-ChildItem -Recurse .) 
+        {
+            $ItemRenderings = $item["__Renderings"]
+            $pattern1 = '\{(.*?)\}'
+            $pattern2 = '\"(.*?)\"'
+            
+            filter Matches($pattern1) 
+            {
+                      $_ | Select-String -AllMatches $pattern1 | 
+                      Select-Object -ExpandProperty Matches | 
+                      Select-Object -ExpandProperty Value
+            }
+            
+            foreach($i in $ItemRenderings | Matches $pattern1)
+            {
+                $originalItem = Get-Item $i -ErrorAction SilentlyContinue
+                $originalPath = $originalItem.Paths.FullPath
+                if(![string]::IsNullOrEmpty($originalPath))
+                {
+                    $newPath = $originalPath -Replace $SourceName, $DestinationName
+                    $newItem = Get-Item -path $newPath
+                    $newItemId = $newItem.Id
+                    $newValue = $ItemRenderings -Replace $i, $newItemId
+                    $ItemRenderings = $newValue
+                    $item.Editing.BeginEdit()
+                    $item["__Renderings"] = $newValue
+                    $item.Editing.EndEdit()
+                }
+            }
+            
+        }
+        updateRenderingsPart -Path $Path -Name $Name
+        Write-Host 'Task Completed'
+    }
+    
+    function updateRenderingsPart([String] $Path, [String] $Name)
+    {
+        $sourcePath = $Path + $DestinationName
+        cd $sourcePath
+                        
+        foreach($item in Get-ChildItem -Recurse .) 
+        {
+            $ItemRenderings = $item["__Renderings"]
+            $pattern2 = '\"(.*?)\"'
+            filter Matches($pattern2) 
+            {
+                $_ | Select-String -AllMatches $pattern2 | 
+                Select-Object -ExpandProperty Matches | 
+                Select-Object -ExpandProperty Value
+            }
+            foreach($i in $ItemRenderings | Matches $pattern2)
+            {
+                if(![string]::IsNullOrEmpty($i))
+                {
+                    $newPath = $i -Replace $SourceName, $DestinationName
+                    $newValue = $ItemRenderings -Replace $i, $newPath
+                    $ItemRenderings = $newValue
+                    $item.Editing.BeginEdit()
+                    $item["__Renderings"] = $newValue
+                    $item.Editing.EndEdit()
+                }
+            }
+            Write-Host $ItemRenderings
+        }
+    }
