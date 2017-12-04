@@ -5,6 +5,7 @@
 # It Replaces : Layout, Placeholder Settings and Renderings
 
 function FixPresentationDetails($path) {
+    Write-Host "Fixing Presentation Details for $path"
     $Items = Get-ChildItem -Path $path -recurse -Language *
     foreach ($Item in $Items) {
         $Renderings = $Item["__Renderings"]
@@ -45,10 +46,10 @@ function FixPresentationDetails($path) {
             }
             $Item.Editing.BeginEdit()
             $Item["__Renderings"] = $newdata
-            $Item.Editing.EndEdit()
+            $Item.Editing.EndEdit() | out-null
         }
     }
-
+    Write-Host "Task Completed"
 }
 
 #----------------------------------------------
@@ -97,7 +98,7 @@ function FixImageFields($path){
                 }
                 $item.Editing.BeginEdit()
                $item[$fieldname] = $data
-               $item.Editing.EndEdit()
+               $item.Editing.EndEdit() | out-null
            }
        }
     }
@@ -110,16 +111,17 @@ function FixImageFields($path){
 #Add Language and Version Call this Function Last
 
 function FixLanguage($path){
-    
+    Write-Host "Fixing Language and Adding Versions for $path"
     $items = Get-ChildItem -Path $path -recurse 
         foreach($item in $items){
             
         if(($item.Language -ne "") -or ($item.Language -ne $null))
         {
-        Add-ItemLanguage -item $item -Language $oldLang -TargetLanguage $newLang -IfExist OverwriteLatest
+        Add-ItemLanguage -item $item -Language $oldLang -TargetLanguage $newLang -IfExist OverwriteLatest | out-null
         Remove-ItemLanguage -item $item -Language $oldLang
         }
     }
+    Write-Host "Task Completed"
     }
 #----------------------------------------------
 
@@ -149,7 +151,8 @@ function CopyItems($oldPath,$newPath,$name)
     {
         cd $Path
         Write-Host 'Renaming '$Name
-        foreach($item in Get-ChildItem -Language * -Recurse .) 
+        $Items = Get-ChildItem -Path $Path -Language * -Recurse
+        foreach($item in $Items) 
         { 
             $originalName = $item.Name
             $newName = $originalName -Replace "$oldTenant", "$newTenant"
@@ -157,7 +160,7 @@ function CopyItems($oldPath,$newPath,$name)
             $item.Editing.BeginEdit()
             $item.Name = $newName;
             $item.Fields["__Display name"].Value = $newName;
-            $item.Editing.EndEdit()
+            $item.Editing.EndEdit() | out-null
         }
         Write-Host 'Task Completed'
     }
@@ -165,22 +168,21 @@ function CopyItems($oldPath,$newPath,$name)
 
 #---------------------------------------------------------
 #Change Templates
-    function changeItemTemplates([String] $Path)
+    function changeItemTemplates($Path)
     {
-        cd $Path
         Write-Host 'Change Item Templates'
             
-        foreach($item in Get-ChildItem -Language * -Recurse .) 
-        { 
-            $oldItemTemplate = Get-ItemTemplate -Item $item
-            $oldTemplateId = $oldItemTemplate.Id
-            $oldItemTemplate = Get-Item $oldTemplateId
-            
-            $oldItemPath = $oldItemTemplate.Paths.FullPath
-            $newPath = $oldItemPath -Replace $oldTenant, $newTenant
-            $newItem = Get-Item -path $newPath
-            Set-ItemTemplate -Item $item -TemplateItem $newItem
-        }
+        $items = get-ChildItem -Path $path -recurse
+        foreach($item in $items)
+            {
+             $templateRoot = '/sitecore/templates'
+             $template = Get-ItemTemplate -Item $item
+             $templatePath = $template.FullName
+             $templatePath = $templatePath -replace $oldTenant,$newTenant
+             $master = [Sitecore.Configuration.Factory]::GetDatabase("master");
+             $templateItem = $master.Templates[$templatePath];
+             $item.ChangeTemplate($templateItem)
+            }
         Write-Host 'Task Completed'
 
     }
@@ -206,7 +208,7 @@ function CopyItems($oldPath,$newPath,$name)
                     $newValue = $originalValue -Replace $itemId, $newItemId
                     $item.Editing.BeginEdit()
                     $item["Allowed Controls"] = $newValue
-                    $item.Editing.EndEdit()
+                    $item.Editing.EndEdit() | out-null
                 }
             }
         }
@@ -230,7 +232,7 @@ function CopyItems($oldPath,$newPath,$name)
                     $newValue = $originalValue -Replace $oldTenant, $newTenant
                     $item.Editing.BeginEdit()
                     $item[$itemField] = $newValue
-                    $item.Editing.EndEdit()
+                    $item.Editing.EndEdit() | out-null
                 }
                 
             }			
