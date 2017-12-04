@@ -113,13 +113,13 @@ function CopyItems($oldPath,$newPath,$name)
             if($item -ne $null)
             {
             Write-Host 'Copying '$name' from '$oldPath' to '$newPath
-            
+
 			#Remove all child items of target directory 
 			Get-ChildItem -Path $newPath | remove-item -recurse
 			#Copy all items from source directory to target directory
-			Get-ChildItem -Path $oldPath -Language * | Copy-Item -Destination $newPath -Recurse -Container
+			Get-ChildItem -Path $oldPath | Copy-Item -Destination $newPath -Recurse -Container
 
-			Write-Host 'Task Completed' 
+			Write-Host 'Task Completed'
             }
 
 			
@@ -134,7 +134,7 @@ function CopyItems($oldPath,$newPath,$name)
         foreach($item in Get-ChildItem -Language * -Recurse .) 
         { 
             $originalName = $item.Name
-            $newName = $originalName -Replace "$SourceName", "$DestinationName"
+            $newName = $originalName -Replace "$oldTenant", "$newTenant"
         
             $item.Editing.BeginEdit()
             $item.Name = $newName;
@@ -145,26 +145,97 @@ function CopyItems($oldPath,$newPath,$name)
     }
 
 
+#---------------------------------------------------------
+#Change Templates
+    function changeItemTemplates([String] $Path)
+    {
+        cd $Path
+        Write-Host 'Change Item Templates'
+            
+        foreach($item in Get-ChildItem -Language * -Recurse .) 
+        { 
+            $oldItemTemplate = Get-ItemTemplate -Item $item
+            $oldTemplateId = $oldItemTemplate.Id
+            $oldItemTemplate = Get-Item $oldTemplateId
+            
+            $oldItemPath = $oldItemTemplate.Paths.FullPath
+            $newPath = $oldItemPath -Replace $oldTenant, $newTenant
+            $newItem = Get-Item -path $newPath
+            Set-ItemTemplate -Item $item -TemplateItem $newItem
+        }
+        Write-Host 'Task Completed'
 
+    }
+
+#----------------------------------------------
+#Update Allowed Controls in placeholder settings
+    function updateAllowedControls([String] $Path)
+    {
+        cd $Path
+        Write-Host 'Updating allowed controls of placeholder settings'                   
+        foreach($item in Get-ChildItem -Language * -Recurse .) 
+        { 
+            $originalValue = $item.Fields["Allowed Controls"].Value
+            if(![string]::IsNullOrEmpty($originalValue))
+            {
+                foreach($itemId in $originalValue.split("|"))
+                {
+                    $originalItem = Get-Item $itemId
+                    $originalPath = $originalItem.Paths.FullPath
+                    $newPath = $originalPath -Replace $oldTenant, $newTenant
+                    $newItem = Get-Item -path $newPath
+                    $newItemId = $newItem.Id
+                    $newValue = $originalValue -Replace $itemId, $newItemId
+                    $item.Editing.BeginEdit()
+                    $item["Allowed Controls"] = $newValue
+                    $item.Editing.EndEdit()
+                }
+            }
+        }
+        Write-Host 'Task Completed'
+    }
+    
+#----------------------------------------------
+#Update path
+    function updatePath([String] $Path, [String] $Name)
+    {
+        cd $Path
+        Write-Host 'Updating path of '$Name                    
+        foreach($item in Get-ChildItem -Language * -Recurse .) 
+        { 
+            $itemFieldList = Get-ItemField -Item $item
+            foreach($itemField in $itemFieldList)
+            {
+                $originalValue = $item.Fields[$itemField].Value
+                if(![string]::IsNullOrEmpty($originalValue))
+                {
+                    $newValue = $originalValue -Replace $oldTenant, $newTenant
+                    $item.Editing.BeginEdit()
+                    $item[$itemField] = $newValue
+                    $item.Editing.EndEdit()
+                }
+                
+            }			
+        }
+        Write-Host 'Task Completed'
+    }
+	
 #-------------------------------UI---------------------------------------------------
 #------------------------------------------------------------------------------------
-# $result = Read-Variable -Parameters `
-#     @{ Name = "root"; Value="master:/sitecore/content"; Title="Root"}, `
-#     @{ Name = "oldTenant"; Value="Old Tenant Name"; Title="Orignal Tenant Name"}, `
-#     @{ Name = "oldLang"; Value="en-ca"; Title="Original Tenant Language"}, `
-#     @{ Name = "newTenant"; Value="New Tenant Name"; Title="New Tenant Name"}, `
-#     @{ Name = "newLang"; Value="en-uk"; Title="New Tenant Language"} `
-#     -Description "Copy Tenant Very Quickly." `
-#     -Title "Copy tenant" -Width 500 -Height 500 `
-#     -OkButtonName "Proceed" -CancelButtonName "Abort" 
+$result = Read-Variable -Parameters `
+    @{ Name = "root"; Value="master:/sitecore/content"; Title="Root"}, `
+    @{ Name = "oldTenant"; Value="Old Tenant Name"; Title="Orignal Tenant Name"}, `
+    @{ Name = "oldLang"; Value="en-ca"; Title="Original Tenant Language"}, `
+    @{ Name = "newTenant"; Value="New Tenant Name"; Title="New Tenant Name"}, `
+    @{ Name = "newLang"; Value="en-uk"; Title="New Tenant Language"} `
+    -Description "Copy Tenant Very Quickly." `
+    -Title "Copy tenant" -Width 500 -Height 500 `
+    -OkButtonName "Proceed" -CancelButtonName "Abort" 
     
-# If ($result -ne "ok")
-# {
-#     Exit
-# }
-$root = "master:/sitecore/content/SKII"
-$oldTenant = "SKII-JP"
-$newTenant = "Demo"
+If ($result -ne "ok")
+{
+    Exit
+}
 #------------------------------------------------------------------------------------
 
 #Copy Content tree
@@ -209,7 +280,67 @@ CopyItems -oldPath "$TemplatesPath/$oldTenant" -newPath "$TemplatesPath/$newTena
 
 #Rename Content Items
 $ContentPath = "$root"
-renameItems -Path "$root/$newTenant" -Name 'content items'
+renameItems -Path "$root/$newTenant" -Name 'Content Items'
+
+#Rename Layout Tree
+$layoutPath = "master:/sitecore/layout/Layouts"
+renameItems -Path "$layoutPath/$newTenant" -Name 'Layout'
+
+#Rename Models Tree
+$modelsPath = "master:/sitecore/layout/Models"
+renameItems -Path "$modelsPath/$newTenant" -Name 'Models'
+
+#Rename Placeholder Settings Tree
+$PlaceholderPath = "master:/sitecore/layout/Placeholder Settings"
+renameItems -Path "$PlaceholderPath/$newTenant" -Name 'Placeholder Settings'
+
+#Rename Renderings Tree
+$RenderingsPath = "master:/sitecore/layout/Renderings"
+renameItems -Path "$RenderingsPath/$newTenant" -Name 'Renderings'
+
+#Rename Sublayouts Tree
+#$SublayoutsPath = "master:/sitecore/layout/Sublayouts"
+#renameItems -Path "$SublayoutsPath/$newTenant" -Name 'Sublayouts'
+
+#Rename Media Library Tree
+#$MediaPath = "master:/sitecore/media library"
+#renameItems -Path "$MediaPath/$newTenant" -Name 'Media Library'
+
+#Rename Media Files Library Tree
+$MediaFilesPath = "master:/sitecore/media library/Files"
+renameItems -Path "$MediaFilesPath/$newTenant" -Name 'Media Files'
+
+#Rename Media Images Library Tree
+$MediaImagesPath = "master:/sitecore/media library/Images"
+renameItems -Path "$MediaImagesPath/$newTenant" -Name 'Media Images'
+
+#Rename Templates Tree
+$TemplatesPath = "master:/sitecore/templates"
+renameItems -Path "$TemplatesPath/$newTenant" -Name 'Templates'
+
+#Change item templates
+$ContentPath = "$root"
+changeItemTemplates -Path "$root/$newTenant"
+
+#Update path of Layouts
+$layoutPath = "master:/sitecore/layout/Layouts"
+updatePath -Path "$layoutPath/$newTenant" -Name 'Layouts'
+
+#Update path of Models
+$modelsPath = "master:/sitecore/layout/Models"
+updatePath -Path "$modelsPath/$newTenant" -Name 'Models'
+
+#Update path of Renderings
+$RenderingsPath = "master:/sitecore/layout/Renderings"
+updatePath -Path "$RenderingsPath/$newTenant" -Name 'Renderings'
+
+#Update path of Sublayouts
+#$SublayoutsPath = "master:/sitecore/layout/Sublayouts"
+#updatePath -Path "$SublayoutsPath/$newTenant" -Name 'Sublayouts'
+
+#Update allowed controls in Placeholder Settings
+$PlaceholderPath = "master:/sitecore/layout/Placeholder Settings"
+updateAllowedControls -Path "$PlaceholderPath/$newTenant"
 
 #Fixing Image Fields
 $ContentPath = "$root"
