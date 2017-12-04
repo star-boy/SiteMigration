@@ -79,7 +79,7 @@ else
             $itemFieldList = Get-ItemField -Item $item
             foreach($itemField in $itemFieldList)
             {
-                if($itemField -match "Image")
+                if($itemField -match "Image" -Or $itemField -match "Picture")
                 {
                     $originalValue = $item.Fields[$itemField].Value
                     if(![string]::IsNullOrEmpty($originalValue))
