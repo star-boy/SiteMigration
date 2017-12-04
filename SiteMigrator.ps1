@@ -1,3 +1,37 @@
+
+
+#----------------------------------------------
+#Fix Presentation Details
+
+
+
+
+
+
+
+
+
+
+
+#----------------------------------------------
+
+#----------------------------------------------
+#Fix Image Fields
+
+
+
+
+
+
+
+
+
+
+
+
+#----------------------------------------------
+
+
 #----------------------------------------------
 #Copy Items
 function CopyItems($oldPath,$newPath,$name)
@@ -5,9 +39,9 @@ function CopyItems($oldPath,$newPath,$name)
 			Write-Host 'Copying '$name' from '$oldPath' to '$newPath
 
 			#Remove all child items of target directory 
-			Get-ChildItem -Path $newPath | remove-item -recurse
+			Get-ChildItem -Path $newPath | remove-item -recurse -Language *
 			#Copy all items from source directory to target directory
-			Get-ChildItem -Path $oldPath | Copy-Item -Destination $newPath -Recurse -Container
+			Get-ChildItem -Path $oldPath -Language * | Copy-Item -Destination $newPath -Recurse -Container
 
 			Write-Host 'Task Completed'
 }
@@ -18,7 +52,7 @@ function CopyItems($oldPath,$newPath,$name)
     {
         cd $Path
         Write-Host 'Renaming '$Name
-        foreach($item in Get-ChildItem -Recurse .) 
+        foreach($item in Get-ChildItem -Language * -Recurse .) 
         { 
             $originalName = $item.Name
             $newName = $originalName -Replace "$SourceName", "$DestinationName"
