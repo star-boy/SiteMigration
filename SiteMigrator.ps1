@@ -105,6 +105,24 @@ function FixImageFields($path){
 }
 #----------------------------------------------
 
+
+#----------------------------------------------
+#Add Language and Version Call this Function Last
+
+function FixLanguage($path){
+    
+    $items = Get-ChildItem -Path $path -recurse 
+        foreach($item in $items){
+            
+        if(($item.Language -ne "") -or ($item.Language -ne $null))
+        {
+        Add-ItemLanguage -item $item -Language $oldLang -TargetLanguage $newLang -IfExist OverwriteLatest
+        Remove-ItemLanguage -item $item -Language $oldLang
+        }
+    }
+    }
+#----------------------------------------------
+
 #----------------------------------------------
 #Copy Items
 function CopyItems($oldPath,$newPath,$name)
@@ -349,3 +367,34 @@ FixImageFields("$root/$newTenant")
 #Fixing Presentation Details.
 $ContentPath = "$root"
 FixPresentationDetails("$root/$newTenant")
+
+
+
+
+
+
+
+
+###############***** Please Call this Function LAST, ADD ANY ADDTIONAL CODE ABOVE THIS.
+#Fix Languages ***** Please Call this Function LAST, ADD ANY ADDTIONAL CODE ABOVE THIS.
+
+#Fix Language for Content 
+FixLanguage("$root/$newTenant")
+#Fix Language for Content 
+FixLanguage("$layoutPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$modelsPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$PlaceholderPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$RenderingsPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$SublayoutsPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$MediaPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$MediaFilesPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$MediaImagesPath/$newTenant")
+#Fix Language for Content 
+FixLanguage("$TemplatesPath/$newTenant")
