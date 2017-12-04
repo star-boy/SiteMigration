@@ -350,6 +350,10 @@ renameItems -Path "$TemplatesPath/$newTenant" -Name 'Score Templates'
 $ContentPath = "$root"
 changeItemTemplates -Path "$root/$newTenant"
 
+#Rename Content Items
+$ContentPath = "$root"
+renameItems -Path "$root/$newTenant" -Name 'Content Items'
+
 #Update path of Layouts
 $layoutPath = "master:/sitecore/layout/Layouts"
 updatePath -Path "$layoutPath/$newTenant" -Name 'Layouts'
