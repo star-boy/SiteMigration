@@ -28,7 +28,7 @@ function FixImageFields($path){
                                         $itempath = $itempath -replace "$oldTenant ","$newTenant "
                                         $itempath = $itempath -replace "$oldTenant/","$newTenant/"
                                     }
-                            #$itempath = $itempath -replace "Microsoft 14 14", "Microsoft 14" // redundant naming bug error
+                            #$itempath = $itempath -replace "Microsoft 14 14", "Microsoft 14" // redundant naming bug error the above code fixes it
                             $newItem =  get-Item -Path $itempath
                             $itemIdValue = $newItem.ID
                             $data = $data -replace $i,$itemIdValue
