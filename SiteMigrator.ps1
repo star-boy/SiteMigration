@@ -302,10 +302,6 @@ CopyItems -oldPath "$TemplatesPath/$oldTenant" -newPath "$TemplatesPath/$newTena
 $TemplatesPath = "master:/sitecore/templates/Branches"
 CopyItems -oldPath "$TemplatesPath/$oldTenant" -newPath "$TemplatesPath/$newTenant" -name "Score Templates"
 
-#Rename Content Items
-$ContentPath = "$root"
-renameItems -Path "$root/$newTenant" -Name 'Content Items'
-
 #Rename Layout Tree
 $layoutPath = "master:/sitecore/layout/Layouts"
 renameItems -Path "$layoutPath/$newTenant" -Name 'Layout'
