@@ -296,6 +296,10 @@ CopyItems -oldPath "$MediaImagesPath/$oldTenant" -newPath "$MediaImagesPath/$new
 $TemplatesPath = "master:/sitecore/templates"
 CopyItems -oldPath "$TemplatesPath/$oldTenant" -newPath "$TemplatesPath/$newTenant" -name "Templates"
 
+#Copy Score Templates Tree
+$TemplatesPath = "master:/sitecore/templates/Branches"
+CopyItems -oldPath "$TemplatesPath/$oldTenant" -newPath "$TemplatesPath/$newTenant" -name "Score Templates"
+
 #Rename Content Items
 $ContentPath = "$root"
 renameItems -Path "$root/$newTenant" -Name 'Content Items'
@@ -336,6 +340,10 @@ renameItems -Path "$MediaImagesPath/$newTenant" -Name 'Media Images'
 $TemplatesPath = "master:/sitecore/templates"
 renameItems -Path "$TemplatesPath/$newTenant" -Name 'Templates'
 
+#Rename Score Templates Tree
+$TemplatesPath = "master:/sitecore/templates/Branches"
+renameItems -Path "$TemplatesPath/$newTenant" -Name 'Score Templates'
+
 #Change item templates
 $ContentPath = "$root"
 changeItemTemplates -Path "$root/$newTenant"
@@ -369,10 +377,9 @@ $ContentPath = "$root"
 FixPresentationDetails("$root/$newTenant")
 
 
-
-
-
-
+#Fixing Presentation Details of Templates.
+$TemplatesPath = "master:/sitecore/templates"
+FixPresentationDetails("$TemplatesPath/$newTenant")
 
 
 ###############***** Please Call this Function LAST, ADD ANY ADDTIONAL CODE ABOVE THIS.
